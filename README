@@ -1,0 +1,33 @@
+* Django metrics is a helper for using the django google chart template tag by justquick: http://www.djangosnippets.org/snippets/726/
+
+Sample django code:
+qs = Event.objects.filter(event=Event.VIEW_LAUNCHED, **date_args)
+_, _, launched_added, _, launched_chart = generic_stats(qs, 'created_at', start_date, end_date,
+               increment, title='Site launches', chart_width=500, chart_height=300)     
+
+context = {'charts': [launched_chart,]}
+
+Here is some sample template code: 
+
+    {% for chart in charts %} 
+        {% chart %}     
+            {% chart-title chart.title 18 "0000cc" %}    
+            {% chart-type "line" %}
+            {% chart-size chart.size %}
+            {% chart-data chart.data %}
+            {% chart-line-style 1 3 1 %}      
+            {% chart-colors "0000CC" "CC0000" %}
+            {% axis "left" %}
+                {% axis-range 0 chart.hw %}
+            {% endaxis %}               
+            {% chart-data-scale "0,100" %}
+            {% chart-labels chart.labels %}
+            {% chart-grid chart.xgrid chart.ygrid 1 5 %}
+                  {% comment %}
+                    {% chart-fill-area "EEEEEE" %}  
+                    {% chart-range-marker "v" "E5ECF9" ".75" ".25" %}                    
+                  {% endcomment %}
+        {% endchart %}
+        
+    {% endfor %}
+
