@@ -82,8 +82,8 @@ def generic_stats(add_queryset, datetime_field, start_date, end_date,
     data_adds = []
     data_subs = []
     
-    dateformat = settings.HOUR_FORMAT if (end_date - start_date) < timedelta(hours=36) else settings.DAY_FORMAT
-
+    dateformat = settings.DATE_HOUR_FORMAT if (end_date - start_date) < timedelta(hours=36) else settings.DATE_DAY_FORMAT
+    
     # generate labels, empty result array
     for d in dates: 
         labels.append(format(d, dateformat))
