@@ -39,7 +39,10 @@ def processLabels(label_list, chart_width):
     return skip
 
 def compute_bin(timestamp, start_date, end_date, increment):
-    ts = int(mktime(timestamp.timetuple())) + TZ_OFFSET
+    if type(timestamp) is float or type(timestamp) is int:
+        ts = int(timestamp) + TZ_OFFSET # already a timestamp
+    else:
+        ts = int(mktime(timestamp.timetuple())) + TZ_OFFSET
     start_ts = int(mktime(start_date.timetuple())) + TZ_OFFSET    
     end_ts = int(mktime(end_date.timetuple())) + TZ_OFFSET
     #interval = (end_ts - start_ts) / (num_slots - 1)
@@ -47,6 +50,7 @@ def compute_bin(timestamp, start_date, end_date, increment):
 
 def round_up_to_nearest_ten(value):
     return value + (10 - value % 10)
+
 
 def generic_stats(add_queryset, datetime_field, start_date, end_date, 
                   increment, value_field=None, title=None, sub_queryset=None, chart_width=500, chart_height=300):
@@ -77,10 +81,12 @@ def generic_stats(add_queryset, datetime_field, start_date, end_date,
     data_totals = []
     data_adds = []
     data_subs = []
+    
+    dateformat = settings.HOUR_FORMAT if (end_date - start_date) < timedelta(hours=36) else settings.DAY_FORMAT
 
     # generate labels, empty result array
     for d in dates: 
-        labels.append(format(d, settings.DATE_FORMAT))
+        labels.append(format(d, dateformat))
         data_totals.append(0)
         data_adds.append(0)
         data_subs.append(0)
@@ -95,8 +101,16 @@ def generic_stats(add_queryset, datetime_field, start_date, end_date,
         for model in qs:
             value = 1
             if value_field is not None:
-                value = getattr(model, value_field)
-            timestamp = getattr(model, datetime_field)	
+                if isinstance(model, dict):                    
+                    value = model.get(value_field, 0)
+                else:
+                    value = getattr(model, value_field)
+            
+            if isinstance(model, dict):
+                timestamp = model.get(datetime_field)
+            else:
+                timestamp = getattr(model, datetime_field)	
+            
             # determine which bin we should be going in... 
             bin = compute_bin(timestamp, start_date, end_date, increment)
             data[bin] += value
