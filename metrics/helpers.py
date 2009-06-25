@@ -5,8 +5,8 @@ import math
 from django.conf import settings
 from time import mktime
 
-FROM_GMT = -5
-TZ_OFFSET = 60 * 60 * FROM_GMT
+# FROM_GMT = -5
+# TZ_OFFSET = 60 * 60 * FROM_GMT
 
 def timedelta_to_seconds(td):
     return  td.seconds + td.days * 60 * 60 * 24
@@ -40,17 +40,24 @@ def processLabels(label_list, chart_width):
 
 def compute_bin(timestamp, start_date, end_date, increment):
     if type(timestamp) is float or type(timestamp) is int:
-        ts = int(timestamp) + TZ_OFFSET # already a timestamp
+        ts = int(timestamp) # + TZ_OFFSET # already a timestamp
     else:
-        ts = int(mktime(timestamp.timetuple())) + TZ_OFFSET
-    start_ts = int(mktime(start_date.timetuple())) + TZ_OFFSET    
-    end_ts = int(mktime(end_date.timetuple())) + TZ_OFFSET
+        ts = int(mktime(timestamp.timetuple())) # + TZ_OFFSET
+    start_ts = int(mktime(start_date.timetuple())) # + TZ_OFFSET    
+    end_ts = int(mktime(end_date.timetuple())) # + TZ_OFFSET
     #interval = (end_ts - start_ts) / (num_slots - 1)
     return (ts - start_ts) / timedelta_to_seconds(increment)
 
 def round_up_to_nearest_ten(value):
     return value + (10 - value % 10)
 
+
+def date_label_format(start_date, end_date, timestamp):
+    """ Transform a date into a string """
+    if (end_date - start_date) < timedelta(hours=36):
+        return '%s:00' % str(timestamp.hour)
+    else:
+        return format(timestamp, 'j M')
 
 def generic_stats(add_queryset, datetime_field, start_date, end_date, 
                   increment, value_field=None, title=None, sub_queryset=None, chart_width=500, chart_height=300):
@@ -82,15 +89,16 @@ def generic_stats(add_queryset, datetime_field, start_date, end_date,
     data_adds = []
     data_subs = []
     
-    dateformat = settings.DATE_HOUR_FORMAT if (end_date - start_date) < timedelta(hours=36) else settings.DATE_DAY_FORMAT
-    
     # generate labels, empty result array
     for d in dates: 
-        labels.append(format(d, dateformat))
+        labels.append(date_label_format(start_date, end_date, d))
         data_totals.append(0)
         data_adds.append(0)
         data_subs.append(0)
     
+    if len(labels):
+        labels[0] = ''
+        
     ops = ['adds',]
     if sub_queryset:
         ops.append('subs')
