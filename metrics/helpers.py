@@ -33,9 +33,10 @@ def processLabels(label_list, chart_width):
     num_labels = len(label_list)
     skip = num_labels / fit_labels
     # must skip x out of y labels to avoid overdrawing
-    for i in range(0, num_labels):
-        if i % skip != 0:
-            label_list[i] = ''    
+    if skip != 0:
+        for i in range(0, num_labels):
+            if i % skip != 0:
+                label_list[i] = ''    
     return skip
 
 def compute_bin(timestamp, start_date, end_date, increment):
@@ -78,8 +79,6 @@ def generic_stats(add_queryset, datetime_field, start_date, end_date,
     output: list of date labels, list of data total values, list of adds, list of removes, renderable chart object
     """
     assert start_date < end_date
-    if title is None:
-        title = "Camels per second"
 
     dates = [d for d in datetimeIterator(start_date, end_date, increment)]    
 
@@ -154,6 +153,8 @@ def generic_stats(add_queryset, datetime_field, start_date, end_date,
     ## prevent label overdrawing
     skip = processLabels(labels, chart_width) 
     ## x-grid scale
+    if skip == 0:
+        skip = 1
     xgrid_scale = float(skip) / (len(labels) - 1) * 100
 
     chart = {'size':'%ix%i' % (chart_width, chart_height), 
