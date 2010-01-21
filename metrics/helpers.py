@@ -60,6 +60,83 @@ def date_label_format(start_date, end_date, timestamp):
     else:
         return format(timestamp, 'j M')
 
+    
+class Dataseries(object): 
+    """
+    Represent some simple information about a data series.  
+    """
+    def __init__(self, size):
+        self.data = [0 for x in range(0, size)]
+        self.hw = -sys.maxint
+        self.lw = sys.maxint
+    
+    
+def multiline_chart(raw_ds_iter, start_date, end_date, increment, title='', chart_width=500, chart_height=300):    
+    """
+    Input 
+      raw_ds_iter: iterable object containing 1+ dataseries, each data series is a list containing datetime,value tuples: 
+        series_iterable = (series1, series2, ...)
+        series = [(datetime, 100), (datetime, 200), ...]
+      start_date, end_date = datetime objects defining boundaries
+      increment = timedelta increments used for binning.  Usually an hour or a day.  
+    """
+    assert start_date < end_date 
+    
+    # determines the number of bins
+    dates = [d for d in datetimeIterator(start_date, end_date, increment)]
+    # build the labels based on the number of bins
+    labels = [] 
+    for d in dates: 
+        labels.append(date_label_format(start_date, end_date, d))
+
+    def build_data(raw_ds, start_date, end_date, increment):
+        series = Dataseries(len(dates))
+        for timestamp, val in raw_ds:            
+            # determine which bin we should be going in... 
+            bin = compute_bin(timestamp, start_date, end_date, increment)
+            series.data[bin] += val
+            
+            # set high and low water marks
+            series.hw = series.data[bin] if series.data[bin] > series.hw else series.hw
+            series.lw = series.data[bin] if series.data[bin] < series.lw else series.lw
+        return series     
+
+    series_ls = [build_data(raw, start_date, end_date, increment) for raw in raw_ds_iter]
+
+    chart_hw = -sys.maxint
+    chart_lw = sys.maxint
+    for series in series_ls:
+        chart_hw = series.hw if series.hw > chart_hw else chart_hw
+        chart_lw = series.lw if series.lw < chart_lw else chart_lw
+
+    ## Here we do some fudging ;) add a buffer of 25% and round to nearest 10
+    buff = .25
+    add_to_hw = round_up_to_nearest_ten(int(buff * chart_hw))
+    chart_hw = round_up_to_nearest_ten(chart_hw) + add_to_hw
+
+    ## y-grid scales # TODO: this can be made to do something more dynamic and intelligent?
+    factor = int((len(str(chart_hw)) - 1))
+    factor = 1 if factor < 1 else factor
+    ygrid_scale = ((math.pow(10, factor) / 2) / chart_hw) * 100
+    ## prevent label overdrawing
+    skip = processLabels(labels, chart_width) 
+    ## x-grid scale
+    if skip == 0:
+        skip = 1
+    xgrid_scale = float(skip) / (len(labels) - 1) * 100
+
+    chart = {'size':'%ix%i' % (chart_width, chart_height), 
+             'title': title, 
+             'hw': chart_hw, 
+             'labels': labels, 
+             'ygrid': ygrid_scale,
+             'xgrid': xgrid_scale }
+    for i, s in enumerate(series_ls):
+        chart['data' + str(i)] = normalize_data(s.data, chart_hw)
+        
+    return labels, chart
+
+    
 def generic_stats(add_queryset, datetime_field, start_date, end_date, 
                   increment, value_field=None, title=None, sub_queryset=None, chart_width=500, chart_height=300):
     """
